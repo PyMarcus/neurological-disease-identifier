@@ -56,7 +56,7 @@ class ImageClassifier:
         try:
             img_array = self.__prepare_image(img_path)
             predictions = self.model.predict(img_array)
-            print(f"PREDICTIONS: {predictions}")  # Verifique os valores aqui
+            print(f"PREDICTIONS: {predictions}")  
             class_idx = np.argmax(predictions, axis=1)[0]
             class_names = ['neurotipica', 'parkinson', 'alzheimer']
             if class_idx < len(class_names):
