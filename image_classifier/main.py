@@ -5,7 +5,7 @@ import os
 
 app = Flask(__name__)
 
-model_path = "trained_t1.h5" 
+model_path = "trained_t3.h5" 
 classifier = ImageClassifier(model_path)
 
 IMAGE_PATH = os.path.abspath(os.path.join(os.getcwd(), "image_uploaded.png"))
@@ -20,4 +20,4 @@ def result():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True) # http://127.0.0.1:5000
+    app.run(debug=True) 
