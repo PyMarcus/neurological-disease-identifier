@@ -1,5 +1,5 @@
 from flask import Flask, jsonify
-from image_classifier import ImageClassifier  # Supondo que você salva a classe no arquivo `image_classifier.py`
+from image_classifier import ImageClassifier  
 import os 
 
 
