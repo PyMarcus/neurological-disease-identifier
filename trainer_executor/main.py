@@ -1,8 +1,11 @@
 import tensorflow as tf
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense
 from tensorflow.keras.callbacks import EarlyStopping, LearningRateScheduler
+from PIL import Image
+import numpy as np
+import os
+from sklearn.model_selection import train_test_split
 
 class TrainerExecutor:
     """
@@ -10,82 +13,81 @@ class TrainerExecutor:
     para classificar desenhos de relógios em três categorias: Alzheimer, Parkinson
     e Neurotípico (normal).
     """
-    def __init__(self, dataset_path: str, validation_path: str) -> None:
+    def __init__(self, dataset_path: str) -> None:
         """
-        Inicializa o TrainerExecutor com os caminhos dos diretórios de dados.
+        Inicializa o TrainerExecutor com o caminho do diretório de dados.
         """
         self.__dataset_path = dataset_path
-        self.__validation_path = validation_path
+        self.__img_size = (200, 200)  # Tamanho das imagens
 
     def execute(self) -> None:
         """
         Executa o processo de treinamento do modelo, que inclui a preparação dos dados,
         construção do modelo, e treinamento com os dados fornecidos.
         """
-        self.__model_training()
+        train_data, train_labels, val_data, val_labels = self.__prepare_data()
+        self.__model_training(train_data, train_labels, val_data, val_labels)
 
-    def __prepare_data(self) -> ImageDataGenerator:
+    def __prepare_data(self):
         """
-        Prepara e retorna um gerador de dados de treinamento com aumento de dados.
+        Prepara e retorna os dados de treinamento e validação.
         """
-        return ImageDataGenerator(
-            rescale=1./255,
-            rotation_range=40,
-            width_shift_range=0.2,
-            height_shift_range=0.2,
-            shear_range=0.2,
-            zoom_range=0.2,
-            horizontal_flip=True,
-            fill_mode="nearest"
+        def load_images_from_folder(folder, label):
+            images = []
+            labels = []
+            for filename in os.listdir(folder):
+                img_path = os.path.join(folder, filename)
+                try:
+                    img = Image.open(img_path).convert('RGB')
+                    img = img.resize(self.__img_size)
+                    img_array = np.asarray(img)
+                    images.append(img_array)
+                    labels.append(label)
+                except Exception as e:
+                    print(f"Erro ao carregar a imagem {img_path}: {e}")
+            return images, labels
+
+        # Carregar imagens de cada classe
+        neurotipica_images, neurotipica_labels = load_images_from_folder(os.path.join(self.__dataset_path+ "/train/", 'neurotipica'), 0)
+        parkinson_images, parkinson_labels = load_images_from_folder(os.path.join(self.__dataset_path + "/train/", 'parkinson'), 1)
+        alzheimer_images, alzheimer_labels = load_images_from_folder(os.path.join(self.__dataset_path + "/train/", 'alzheimer'), 2)
+
+        # Combinar e dividir os dados em treino e validação
+        all_images = np.array(neurotipica_images + parkinson_images + alzheimer_images)
+        all_labels = np.array(neurotipica_labels + parkinson_labels + alzheimer_labels)
+
+        # Normalização
+        all_images = all_images / 255.0
+
+        # Dividir os dados
+        train_data, val_data, train_labels, val_labels = train_test_split(
+            all_images, all_labels, test_size=0.2, random_state=42
         )
 
-    def __generators(self) -> tuple:
-        """
-        Cria e retorna geradores de dados para treinamento e validação.
-        """
-        validation_datagen = ImageDataGenerator(rescale=1./255)
+        return train_data, train_labels, val_data, val_labels
 
-        train_generator = self.__prepare_data().flow_from_directory(
-            self.__dataset_path,
-            target_size=(150, 150),
-            batch_size=32,
-            color_mode='grayscale',  
-            class_mode='categorical'
-        )
-
-        validation_generator = validation_datagen.flow_from_directory(
-            self.__validation_path,
-            target_size=(150, 150),
-            batch_size=32,
-            color_mode='grayscale', 
-            class_mode='categorical'
-        )
-        return train_generator, validation_generator
-    
-    def __model_training(self) -> None:
+    def __model_training(self, train_data, train_labels, val_data, val_labels) -> None:
         """
         Constrói e treina um modelo de rede neural convolucional para classificação
         de imagens. O modelo é salvo após o treinamento.
         """
         model = Sequential([
-                Conv2D(32, (3, 3), activation='relu', input_shape=(150, 150, 1)),
-                MaxPooling2D((2, 2)),
-                Conv2D(64, (3, 3), activation='relu'),
-                MaxPooling2D((2, 2)),
-                Conv2D(128, (3, 3), activation='relu'),
-                MaxPooling2D((2, 2)),
-                Conv2D(128, (3, 3), activation='relu'),
-                MaxPooling2D((2, 2)),
-                Flatten(),
-                Dense(512, activation='relu'),
-                Dense(3, activation='softmax')  # 3 classes: Alzheimer, Parkinson, Neurotípico
-            ])
+            Conv2D(32, (3, 3), activation='relu', input_shape=(200, 200, 3)),
+            MaxPooling2D((2, 2)),
+            Conv2D(64, (3, 3), activation='relu'),
+            MaxPooling2D((2, 2)),
+            Conv2D(128, (3, 3), activation='relu'),
+            MaxPooling2D((2, 2)),
+            Conv2D(128, (3, 3), activation='relu'),
+            MaxPooling2D((2, 2)),
+            Flatten(),
+            Dense(512, activation='relu'),
+            Dense(3, activation='softmax')  # 3 classes: Alzheimer, Parkinson, Neurotípico
+        ])
         
         model.compile(optimizer='adam',
-                      loss='categorical_crossentropy',
+                      loss='sparse_categorical_crossentropy',
                       metrics=['accuracy'])
-        
-        early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
         
         def scheduler(epoch, lr):
             if epoch % 10 == 0 and epoch != 0:
@@ -93,25 +95,18 @@ class TrainerExecutor:
             return lr
 
         lr_scheduler = LearningRateScheduler(scheduler)
-    
-        train_gen, validation_gen = self.__generators()
-    
+
         history = model.fit(
-            train_gen,
-            steps_per_epoch=train_gen.samples // train_gen.batch_size,
-            epochs=1500,  
-            validation_data=validation_gen,
-            validation_steps=validation_gen.samples // validation_gen.batch_size,
+            train_data, train_labels,
+            epochs=50,
+            validation_data=(val_data, val_labels),
             callbacks=[lr_scheduler]
         )
-        model.save("trained_t2.h5") 
+        model.save("trained_t3.h5") 
 
 if __name__ == '__main__':
-    import os
-    
-    dataset_path = "/home/marcus/go/src/github.com/PyMarcus/trabalho2_marcus/dataset/train"
-    validation_path = "/home/marcus/go/src/github.com/PyMarcus/trabalho2_marcus/dataset/validation"
-    te = TrainerExecutor(dataset_path, validation_path)
+    dataset_path = "/home/marcus/go/src/github.com/PyMarcus/trabalho2_marcus/dataset"
+    te = TrainerExecutor(dataset_path)
     
     physical_devices = tf.config.list_physical_devices('GPU')
     if physical_devices:

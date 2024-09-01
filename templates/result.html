@@ -9,13 +9,6 @@
         .loading {
             display: none;
         }
-    </style>
-    <script>
-        function showLoading() {
-            document.getElementById('loading').style.display = 'block';
-        }
-    </script>
-    <style>
         body {
             background-image: url('assets/background.jpg');
             background-size: cover;
@@ -27,7 +20,7 @@
             margin: 0;
         }
         .card {
-            background: linear-gradient(135deg, #f3f3f3, #d9d9d9);
+            background: #fff;
             border: none;
             border-radius: 15px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
@@ -46,17 +39,36 @@
         input[type="file"] {
             margin: 1rem 0;
         }
+        .card-img-top {
+            max-height: 800px; /* Diminui a altura da imagem */
+            object-fit: cover; /* Mantém a proporção da imagem */
+        }
+        .alert-success {
+            margin-bottom: 1rem; /* Espaço entre o alerta e o card */
+        }
     </style>
 </head>
 <body>
     <div class="container mt-5">
-        <h1 class="text-center">
+        <div class="row justify-content-center">
             {{if .message}}
-                <div class="alert alert-success text-center">
-                    {{.message}}
+                <div class="col-md-6">
+                    <div class="alert alert-success text-center" role="alert">
+                        Resultado carregado com sucesso!
+                    </div>
+                    <div class="card">
+                        <img src="assets/doctor.png" width="500px" height="10000px" class="card-img-top" alt="Doctor Image">
+                        <div class="card-body">
+                            <h5 class="card-title text-center">
+                                <b>
+                                    {{.message}}
+                                </b>
+                            </h5>
+                        </div>
+                    </div>
                 </div>
             {{end}}
-        </h1>
+        </div>
     </div>
 </body>
 </html>
