@@ -113,7 +113,6 @@ if __name__ == '__main__':
     validation_path = "/home/marcus/go/src/github.com/PyMarcus/trabalho2_marcus/dataset/validation"
     te = TrainerExecutor(dataset_path, validation_path)
     
-    # Verifique se a GPU está disponível
     physical_devices = tf.config.list_physical_devices('GPU')
     if physical_devices:
         print(f"GPU(s) detectada(s): {physical_devices}")
