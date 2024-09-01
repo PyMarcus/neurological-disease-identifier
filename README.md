@@ -1,5 +1,13 @@
-# neurological-disease-identifier.
-identifier of people with Parkinson's, Alzheimer's and neurotypicals.
+# identifier of people with Parkinson's, Alzheimer's and neurotypicals.
 
+Get .h5 file:
 
-[README.md](https://github.com/user-attachments/files/16830493/README.md)
+    python /trainer_executor/main.py
+
+Run image_classifier API:
+
+    python /image_classifier/main.py
+
+Run web applicaition:
+
+    go run main.go
